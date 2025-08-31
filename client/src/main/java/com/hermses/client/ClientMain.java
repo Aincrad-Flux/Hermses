@@ -11,7 +11,12 @@ public class ClientMain {
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 5050;
         String user = args.length > 2 ? args[2] : "user" + System.currentTimeMillis()%1000;
         ChatClient client = new ChatClient(host, port);
-        client.connect(user, ClientMain::printMessage, s -> System.out.println("SYSTEM RAW: " + s));
+        try {
+            client.connect(user, ClientMain::printMessage, s -> System.out.println("SYSTEM RAW: " + s));
+        } catch (Exception e) {
+            System.err.printf("Impossible de se connecter au serveur %s:%d (%s). Assurez-vous que le serveur est lancé.%n", host, port, e.getMessage());
+            return;
+        }
         BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
         String line;
         while ((line = console.readLine()) != null) {
@@ -22,6 +27,11 @@ public class ClientMain {
     }
 
     private static void printMessage(Message m) {
-        System.out.printf("[%s] %s: %s%n", m.getType(), m.getSender(), m.getContent());
+        // Afficher seulement l'expéditeur et le contenu comme demandé
+        switch (m.getType()) {
+            case JOIN -> System.out.printf("* %s a rejoint *%n", m.getSender());
+            case LEAVE -> System.out.printf("* %s est parti *%n", m.getSender());
+            default -> System.out.printf("%s: %s%n", m.getSender(), m.getContent());
+        }
     }
 }

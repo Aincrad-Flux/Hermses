@@ -23,7 +23,11 @@ public class ChatClient implements Closeable {
     }
 
     public void connect(String username, Consumer<Message> onMessage, Consumer<String> onRawSystem) throws IOException {
-        socket = new Socket(host, port);
+        try {
+            socket = new Socket(host, port);
+        } catch (IOException ioe) {
+            throw new IOException("Serveur injoignable (" + host + ":" + port + ")", ioe);
+        }
         out = new PrintWriter(socket.getOutputStream(), true);
         BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         pool.submit(() -> {
@@ -40,7 +44,7 @@ public class ChatClient implements Closeable {
             } catch (IOException ignored) {} finally { try { close(); } catch (IOException ignored2) {} }
         });
         // first line expected is prompt, send username after reading one line
-        try { if (in.readLine() != null) out.println(username); } catch (IOException ignored) {}
+        try { if (in.readLine() != null) out.println(username); } catch (IOException ignored) { /* ignore */ }
     }
 
     public void sendChat(String user, String text) {

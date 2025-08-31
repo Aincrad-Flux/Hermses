@@ -6,6 +6,10 @@ public class ClientLauncher {
             com.hermses.client.ui.ChatApp.main(trimFirst(args));
             return;
         }
+        if (args.length > 0 && ("--tui".equalsIgnoreCase(args[0]) || "tui".equalsIgnoreCase(args[0]))) {
+            TuiClient.main(trimFirst(args));
+            return;
+        }
         ClientMain.main(args);
     }
 
