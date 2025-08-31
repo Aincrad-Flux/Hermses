@@ -1,3 +1,33 @@
+## Maven / Java
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+dependency-reduced-pom.xml
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+## IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+
+## OS / Misc
+.DS_Store
+*.log
+
+## Java
+*.class
+
+## Logs
+logs/
 # Compiled class file
 *.class
 
