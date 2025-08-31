@@ -82,6 +82,8 @@ public class ChatApp extends Application {
         String text = input.getText();
         if (text.isBlank()) return;
         client.sendChat(username, text);
+    // Echo local car le serveur ne renvoie pas le message de l'émetteur
+    append(username + ": " + text);
         input.clear();
     }
 

@@ -177,6 +177,8 @@ public class TuiClient {
                 String text = input.getText();
                 if (!text.isBlank() && client != null) {
                     client.sendChat(username, text);
+                    // Echo local (le serveur ne reboucle pas le message à l'expéditeur)
+                    appendMessage(chatLog, Message.chat(username, text));
                 }
                 input.setText("");
                 return false;

@@ -49,7 +49,9 @@ public class ChatClient implements Closeable {
 
     public void sendChat(String user, String text) {
         try {
-            out.println(serializer.serialize(Message.chat(user, text)));
+            // Le serveur attend une ligne de texte brute (pas du JSON). Il encapsule ensuite dans un Message.chat
+            // Ancien comportement: envoi JSON -> les autres clients voyaient le JSON complet comme contenu.
+            out.println(text);
         } catch (Exception e) {
             e.printStackTrace();
         }
