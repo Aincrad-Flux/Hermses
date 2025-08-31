@@ -29,7 +29,7 @@ public class TuiClient {
     private ChatClient client;
     private Screen screen;
     private MultiWindowTextGUI gui;
-    private final BlockingQueue<Runnable> uiQueue = new LinkedBlockingQueue<>();
+    // Ancien uiQueue supprimé: on utilisera directement gui.getGUIThread().invokeLater
     private final DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm")
             .withZone(ZoneId.systemDefault());
 
@@ -46,8 +46,8 @@ public class TuiClient {
             throw new IOException("Impossible d'initialiser le terminal: " + ioe.getMessage(), ioe);
         }
 
-        Window window = new BasicWindow("Hermses");
-        window.setHints(java.util.List.of(Window.Hint.FULL_SCREEN));
+    Window window = new BasicWindow("Hermses");
+    window.setHints(java.util.List.of(Window.Hint.FULL_SCREEN));
         // If username absent -> login screen
         if (username == null || username.isBlank()) {
             Panel login = new Panel(new LinearLayout(Direction.VERTICAL));
@@ -75,28 +75,11 @@ public class TuiClient {
             buildChatUI(window);
             gui.addWindow(window);
         }
-
-        Thread pump = new Thread(() -> {
-            while (window.isVisible()) {
-                try { uiQueue.take().run(); } catch (InterruptedException ignored) { break; }
-            }
-        }, "ui-pump");
-        pump.setDaemon(true);
-        pump.start();
-
-        while (window.isVisible()) {
-            KeyStroke ks = screen.pollInput();
-            if (ks != null) {
-                if (ks.getKeyType() == KeyType.EOF || (ks.getKeyType() == KeyType.Character && ks.getCharacter() != null && ks.getCharacter() == 'c' && ks.isCtrlDown())) {
-                    break;
-                }
-            }
-            try { Thread.sleep(25); } catch (InterruptedException ignored) {}
-        }
+        // Lancer la boucle d'UI Lanterna (bloquante) jusqu'à fermeture de la fenêtre
+        gui.waitForWindowToClose(window);
         close();
     }
-
-    private void enqueue(Runnable r) { uiQueue.offer(r); }
+    // enqueue supprimé (plus utilisé)
 
     private void appendMessage(TextBox log, Message m) {
         String ts = timeFmt.format(Instant.ofEpochMilli(m.getTimestamp()));
@@ -160,14 +143,14 @@ public class TuiClient {
 
         client = new ChatClient(host, port);
         try {
-            client.connect(username, m -> enqueue(() -> {
+            client.connect(username, m -> gui.getGUIThread().invokeLater(() -> {
                 if (m.getType() == MessageType.USERS) {
                     updateUsers(contacts, m.getContent());
                 } else {
                     appendMessage(chatLog, m);
                 }
-            }), raw -> enqueue(() -> appendSystem(chatLog, raw)));
-            enqueue(() -> status.setText("Connecté en tant que " + username + " @" + host + ":" + port));
+            }), raw -> gui.getGUIThread().invokeLater(() -> appendSystem(chatLog, raw)));
+            gui.getGUIThread().invokeLater(() -> status.setText("Connecté en tant que " + username + " @" + host + ":" + port));
         } catch (IOException e) {
             appendDirect(chatLog, "[ERREUR] Serveur injoignable: " + e.getMessage());
             status.setText("Echec connexion");
@@ -175,6 +158,10 @@ public class TuiClient {
         input.setInputFilter((interactable, keyStroke) -> {
             if (keyStroke.getKeyType() == KeyType.Enter) {
                 String text = input.getText();
+                if (text.equalsIgnoreCase("/quit")) {
+                    window.close();
+                    return false;
+                }
                 if (!text.isBlank() && client != null) {
                     client.sendChat(username, text);
                     // Echo local (le serveur ne reboucle pas le message à l'expéditeur)
@@ -185,7 +172,7 @@ public class TuiClient {
             }
             return true;
         });
-        gui.getGUIThread().invokeLater(() -> appendDirect(chatLog, "Tape /quit ou Ctrl+C pour quitter."));
+        gui.getGUIThread().invokeLater(() -> appendDirect(chatLog, "Tape /quit pour quitter."));
     }
 
     public static void main(String[] args) throws Exception {
