@@ -4,5 +4,6 @@ public enum MessageType {
     JOIN,
     CHAT,
     LEAVE,
-    SYSTEM
+    SYSTEM,
+    USERS // liste initiale des utilisateurs connectés (contenu: noms séparés par des virgules)
 }

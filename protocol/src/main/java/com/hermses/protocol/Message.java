@@ -26,6 +26,10 @@ public class Message {
         return new Message(MessageType.CHAT, sender, content, Instant.now().toEpochMilli());
     }
 
+    public static Message users(String csv) {
+        return new Message(MessageType.USERS, "server", csv, Instant.now().toEpochMilli());
+    }
+
     public MessageType getType() { return type; }
     public String getSender() { return sender; }
     public String getContent() { return content; }

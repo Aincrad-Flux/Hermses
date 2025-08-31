@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Instant;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,6 +65,16 @@ public class ChatServer implements AutoCloseable {
         }
     }
 
+    private void broadcastAll(Message message) { broadcast(message, null); }
+
+    private void broadcastUsers() {
+        String csv = clients.stream()
+                .map(c -> c.name)
+                .sorted(String::compareToIgnoreCase)
+                .collect(Collectors.joining(","));
+        broadcastAll(Message.users(csv));
+    }
+
     @Override
     public void close() throws IOException {
         running = false;
@@ -89,6 +100,7 @@ public class ChatServer implements AutoCloseable {
                 sendSystem("Bienvenue ! Entre ton pseudo:");
                 this.name = in.readLine();
                 broadcast(new Message(MessageType.JOIN, name, name + " a rejoint", Instant.now().toEpochMilli()), this);
+                broadcastUsers();
                 String line;
                 while ((line = in.readLine()) != null) {
                     if (line.equalsIgnoreCase("/quit")) break;
@@ -100,6 +112,7 @@ public class ChatServer implements AutoCloseable {
             } finally {
                 clients.remove(this);
                 broadcast(new Message(MessageType.LEAVE, name, name + " est parti", Instant.now().toEpochMilli()), this);
+                broadcastUsers();
                 try { close(); } catch (IOException ignored) {}
             }
         }
