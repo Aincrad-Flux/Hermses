@@ -25,7 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class TuiClient {
     private final String host;
     private final int port;
-    private final String username;
+    private String username; // défini après login si null
     private ChatClient client;
     private Screen screen;
     private MultiWindowTextGUI gui;
@@ -41,80 +41,49 @@ public class TuiClient {
         try {
             screen = new DefaultTerminalFactory().createScreen();
             screen.startScreen();
-            gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.BLUE));
+            gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.BLACK));
         } catch (IOException ioe) {
             throw new IOException("Impossible d'initialiser le terminal: " + ioe.getMessage(), ioe);
         }
 
-        Window window = new BasicWindow("Hermses Chat - " + username);
+        Window window = new BasicWindow("Hermses");
         window.setHints(java.util.List.of(Window.Hint.FULL_SCREEN));
+        // If username absent -> login screen
+        if (username == null || username.isBlank()) {
+            Panel login = new Panel(new LinearLayout(Direction.VERTICAL));
+            Label title = new Label("Hermes - Messagerie Sécurisée").addStyle(SGR.BOLD);
+            TextBox pseudo = new TextBox(new TerminalSize(20,1));
+            pseudo.setText("");
+            login.addComponent(title);
+            login.addComponent(new Label("Entrez votre pseudo puis Entrée:"));
+            login.addComponent(pseudo);
+            window.setComponent(login);
+            gui.addWindow(window);
 
-        Panel root = new Panel();
-        root.setLayoutManager(new BorderLayout());
-
-        // Chat log
-    TextBox chatLog = new TextBox(new TerminalSize(80, 24), TextBox.Style.MULTI_LINE)
-        .setReadOnly(true);
-
-        // Input box
-        TextBox input = new TextBox().setLayoutData(BorderLayout.Location.BOTTOM);
-
-        // Status bar
-        Label status = new Label("⌛ Connexion...");
-
-        root.addComponent(chatLog, BorderLayout.Location.CENTER);
-        root.addComponent(input, BorderLayout.Location.BOTTOM);
-        root.addComponent(status, BorderLayout.Location.TOP);
-
-        window.setComponent(root);
-        gui.addWindow(window);
-
-        // Start connection
-        client = new ChatClient(host, port);
-        try {
-            client.connect(username, m -> enqueue(() -> appendMessage(chatLog, m)), raw -> enqueue(() -> appendSystem(chatLog, raw)));
-            enqueue(() -> status.setText("Connecté à " + host + ":" + port));
-        } catch (IOException e) {
-            appendDirect(chatLog, "[ERREUR] Serveur injoignable: " + e.getMessage());
-            status.setText("Echec connexion");
+            pseudo.setInputFilter((i,k)->{
+                if (k.getKeyType()==KeyType.Enter) {
+                    String entered = pseudo.getText().trim();
+                    if (!entered.isEmpty()) {
+                        this.username = entered;
+                        buildChatUI(window);
+                    }
+                    return false;
+                }
+                return true;
+            });
+        } else {
+            buildChatUI(window);
+            gui.addWindow(window);
         }
 
-        input.takeFocus();
-        input.setCaretPosition(0);
-        input.setText("");
-
-        input.setValidationPattern(null);
-
-        // Handle enter key
-        input.setInputFilter((interactable, keyStroke) -> {
-            if (keyStroke.getKeyType() == KeyType.Enter) {
-                String text = input.getText();
-                if (!text.isBlank() && client != null) {
-                    client.sendChat(username, text);
-                }
-                input.setText("");
-                return false; // consume
-            }
-            return true;
-        });
-
-        // UI loop pump for queued updates
         Thread pump = new Thread(() -> {
             while (window.isVisible()) {
-                try {
-                    Runnable r = uiQueue.take();
-                    r.run();
-                } catch (InterruptedException ignored) { break; }
+                try { uiQueue.take().run(); } catch (InterruptedException ignored) { break; }
             }
         }, "ui-pump");
         pump.setDaemon(true);
         pump.start();
 
-        // Global key listener for quitting
-        gui.getGUIThread().invokeLater(() -> appendDirect(chatLog, "Tape /quit ou Ctrl+C pour quitter."));
-        screen.doResizeIfNecessary();
-
-        // Main processing loop
         while (window.isVisible()) {
             KeyStroke ks = screen.pollInput();
             if (ks != null) {
@@ -124,7 +93,6 @@ public class TuiClient {
             }
             try { Thread.sleep(25); } catch (InterruptedException ignored) {}
         }
-
         close();
     }
 
@@ -155,10 +123,73 @@ public class TuiClient {
         try { if (screen != null) screen.stopScreen(); } catch (IOException ignored) {}
     }
 
+    private void updateUsers(TextBox contacts, String csv) {
+        if (csv == null || csv.isBlank()) {
+            contacts.setText("(aucun)");
+            return;
+        }
+        contacts.setText(String.join("\n", csv.split(",")) + "\n");
+    }
+
+    private void buildChatUI(Window window) {
+        Panel root = new Panel(new BorderLayout());
+        // Left contacts
+        TextBox contacts = new TextBox(new TerminalSize(18, 10), TextBox.Style.MULTI_LINE).setReadOnly(true);
+        contacts.setText("(aucun)\n");
+        Panel contactsPanel = new Panel(new BorderLayout());
+        contactsPanel.addComponent(new Label("Contacts"), BorderLayout.Location.TOP);
+        contactsPanel.addComponent(contacts, BorderLayout.Location.CENTER);
+        // Chat area
+        TextBox chatLog = new TextBox(new TerminalSize(1,1)).setReadOnly(true);
+        Panel chatPanel = new Panel(new BorderLayout());
+        chatPanel.addComponent(new Label("Messages"), BorderLayout.Location.TOP);
+        chatPanel.addComponent(chatLog, BorderLayout.Location.CENTER);
+        Panel center = new Panel(new LinearLayout(Direction.HORIZONTAL));
+        contactsPanel.setPreferredSize(new TerminalSize(20,1));
+        center.addComponent(contactsPanel);
+        center.addComponent(chatPanel);
+        TextBox input = new TextBox("");
+        Panel inputPanel = new Panel(new BorderLayout());
+        inputPanel.addComponent(new Label("> Saisir message :"), BorderLayout.Location.TOP);
+        inputPanel.addComponent(input, BorderLayout.Location.CENTER);
+        Label status = new Label("⌛ Connexion...");
+        root.addComponent(status, BorderLayout.Location.TOP);
+        root.addComponent(center, BorderLayout.Location.CENTER);
+        root.addComponent(inputPanel, BorderLayout.Location.BOTTOM);
+        window.setComponent(root);
+
+        client = new ChatClient(host, port);
+        try {
+            client.connect(username, m -> enqueue(() -> {
+                if (m.getType() == MessageType.USERS) {
+                    updateUsers(contacts, m.getContent());
+                } else {
+                    appendMessage(chatLog, m);
+                }
+            }), raw -> enqueue(() -> appendSystem(chatLog, raw)));
+            enqueue(() -> status.setText("Connecté en tant que " + username + " @" + host + ":" + port));
+        } catch (IOException e) {
+            appendDirect(chatLog, "[ERREUR] Serveur injoignable: " + e.getMessage());
+            status.setText("Echec connexion");
+        }
+        input.setInputFilter((interactable, keyStroke) -> {
+            if (keyStroke.getKeyType() == KeyType.Enter) {
+                String text = input.getText();
+                if (!text.isBlank() && client != null) {
+                    client.sendChat(username, text);
+                }
+                input.setText("");
+                return false;
+            }
+            return true;
+        });
+        gui.getGUIThread().invokeLater(() -> appendDirect(chatLog, "Tape /quit ou Ctrl+C pour quitter."));
+    }
+
     public static void main(String[] args) throws Exception {
-        String host = args.length > 0 ? args[0] : "localhost";
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : 5050;
-        String user = args.length > 2 ? args[2] : "user" + System.currentTimeMillis()%1000;
-        new TuiClient(host, port, user).run();
+    String host = args.length > 0 ? args[0] : "localhost";
+    int port = args.length > 1 ? Integer.parseInt(args[1]) : 5050;
+    String user = args.length > 2 ? args[2] : null; // déclenche écran login
+    new TuiClient(host, port, user).run();
     }
 }
