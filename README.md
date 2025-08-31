@@ -6,8 +6,7 @@ Application de messagerie (prototype) en Java multi-modules : serveur, client CL
 
 - `protocol` : Modèles de messages & sérialisation JSON.
 - `server` : Serveur de chat TCP simple (broadcast).
-- `client` : Client CLI minimal.
-- `client-ui` : Interface JavaFX (desktop) s'appuyant sur le client.
+- `client` : Client unifié (CLI + JavaFX UI).
 
 ## Prérequis
 
@@ -27,16 +26,17 @@ mvn -pl server -am package
 java -jar server/target/hermses-server.jar 5050
 ```
 
-## Client CLI
-Après build, JAR autonome : `client/target/hermses-client.jar`.
+## Client (CLI & GUI)
+Après build, JAR autonome : `client/target/hermses-client.jar` (contient CLI + UI).
 ```
 mvn -pl client -am package
-java -jar client/target/hermses-client.jar localhost 5050 pseudo
+java -jar client/target/hermses-client.jar localhost 5050 pseudo   # CLI
+java -cp client/target/hermses-client.jar com.hermses.client.ui.ChatApp    # GUI
 ```
-
-## Client UI (JavaFX)
+Ou via scripts:
 ```
-mvn -pl client-ui -am javafx:run
+bin/client tui [host] [port] [pseudo]
+bin/client gui
 ```
 
 ## Scripts binaires pratiques

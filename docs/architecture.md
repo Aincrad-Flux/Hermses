@@ -5,8 +5,7 @@ Objectif : Base propre et extensible pour une application de messagerie temps r�
 ## Découpage
 - `protocol` : DTO et sérialisation (actuellement JSON / Jackson). Peut évoluer vers un schéma (JSON Schema / Protobuf) plus tard.
 - `server` : Gestion des connexions TCP, broadcast simple. À remplacer ensuite par un event loop NIO / Netty / WebSocket.
-- `client` : API client + CLI. Fournit `ChatClient` réutilisable.
-- `client-ui` : Couche présentation JavaFX.
+- `client` : API client + CLI + UI JavaFX (fusion).
 
 ## Flux réseau (prototype)
 1. Client se connecte (Socket TCP) -> serveur.
