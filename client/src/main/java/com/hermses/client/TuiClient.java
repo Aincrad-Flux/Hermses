@@ -6,6 +6,7 @@ import com.googlecode.lanterna.SGR;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.gui2.*;
+import com.googlecode.lanterna.gui2.Borders;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 import com.googlecode.lanterna.screen.Screen;
@@ -116,30 +117,50 @@ public class TuiClient {
 
     private void buildChatUI(Window window) {
         Panel root = new Panel(new BorderLayout());
-        // Left contacts
-        TextBox contacts = new TextBox(new TerminalSize(18, 10), TextBox.Style.MULTI_LINE).setReadOnly(true);
-        contacts.setText("(aucun)\n");
-        Panel contactsPanel = new Panel(new BorderLayout());
-        contactsPanel.addComponent(new Label("Contacts"), BorderLayout.Location.TOP);
-        contactsPanel.addComponent(contacts, BorderLayout.Location.CENTER);
-        // Chat area
-        TextBox chatLog = new TextBox(new TerminalSize(1,1)).setReadOnly(true);
+    // Left contacts (with border)
+    TextBox contacts = new TextBox(new TerminalSize(18, 10), TextBox.Style.MULTI_LINE).setReadOnly(true);
+    contacts.setText("(aucun)\n");
+    Panel contactsPanel = new Panel(new BorderLayout());
+    contactsPanel.addComponent(contacts, BorderLayout.Location.CENTER);
+    contactsPanel.setPreferredSize(new TerminalSize(20,1));
+    Component contactsWrapped = contactsPanel.withBorder(Borders.singleLine("Contacts"));
+
+        // Chat area (with border) - multi-line filling remaining space
+        TextBox chatLog = new TextBox(new TerminalSize(80, 25), TextBox.Style.MULTI_LINE).setReadOnly(true);
         Panel chatPanel = new Panel(new BorderLayout());
-        chatPanel.addComponent(new Label("Messages"), BorderLayout.Location.TOP);
         chatPanel.addComponent(chatLog, BorderLayout.Location.CENTER);
-        Panel center = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        contactsPanel.setPreferredSize(new TerminalSize(20,1));
-        center.addComponent(contactsPanel);
-        center.addComponent(chatPanel);
-        TextBox input = new TextBox("");
-        Panel inputPanel = new Panel(new BorderLayout());
-        inputPanel.addComponent(new Label("> Saisir message :"), BorderLayout.Location.TOP);
-        inputPanel.addComponent(input, BorderLayout.Location.CENTER);
+        // Ajuster taille initiale selon le terminal courant si disponible
+        try {
+            TerminalSize ts = screen.getTerminalSize();
+            int chatW = Math.max(40, ts.getColumns() - 25);
+            int chatH = Math.max(10, ts.getRows() - 7);
+            chatPanel.setPreferredSize(new TerminalSize(chatW, chatH));
+        } catch (Exception ignored) {}
+    Component chatWrapped = chatPanel.withBorder(Borders.singleLine("Messages"));
+
+    Panel center = new Panel(new LinearLayout(Direction.HORIZONTAL));
+    center.addComponent(contactsWrapped);
+    center.addComponent(chatWrapped);
+
+    // Input area (with border)
+    TextBox input = new TextBox("");
+    Panel inputPanel = new Panel(new BorderLayout());
+    inputPanel.addComponent(input, BorderLayout.Location.CENTER);
+    Component inputWrapped = inputPanel.withBorder(Borders.singleLine("Entrée"));
         Label status = new Label("⌛ Connexion...");
         root.addComponent(status, BorderLayout.Location.TOP);
         root.addComponent(center, BorderLayout.Location.CENTER);
-        root.addComponent(inputPanel, BorderLayout.Location.BOTTOM);
+    root.addComponent(inputWrapped, BorderLayout.Location.BOTTOM);
         window.setComponent(root);
+        // Resize adaptatif: recalculer la taille préférée du chat lors d'un redimensionnement
+        window.addWindowListener(new WindowListenerAdapter() {
+            @Override
+            public void onResized(Window window, TerminalSize oldSize, TerminalSize newSize) {
+                int chatW = Math.max(40, newSize.getColumns() - 25);
+                int chatH = Math.max(10, newSize.getRows() - 7);
+                chatPanel.setPreferredSize(new TerminalSize(chatW, chatH));
+            }
+        });
 
         client = new ChatClient(host, port);
         try {
