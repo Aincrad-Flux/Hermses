@@ -31,12 +31,13 @@ Après build, JAR autonome : `client/target/hermses-client.jar` (contient CLI + 
 ```
 mvn -pl client -am package
 java -jar client/target/hermses-client.jar localhost 5050 pseudo   # CLI
-java -cp client/target/hermses-client.jar com.hermses.client.ui.ChatApp    # GUI
+java -jar client/target/hermses-client.jar --gui                   # GUI
 ```
 Ou via scripts:
 ```
-bin/client tui [host] [port] [pseudo]
-bin/client gui
+bin/client [host] [port] [pseudo]   # CLI
+bin/client gui                      # GUI
+```
 ```
 
 ## Scripts binaires pratiques

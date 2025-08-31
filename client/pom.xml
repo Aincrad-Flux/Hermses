@@ -38,7 +38,7 @@
                             <finalName>hermses-client</finalName>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.hermses.client.ClientMain</mainClass>
+                                            <mainClass>com.hermses.client.ClientLauncher</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
