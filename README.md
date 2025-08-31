@@ -21,23 +21,35 @@ mvn clean install
 ```
 
 ## Lancer le serveur
+Après build, un JAR autonome est créé : `server/target/hermses-server.jar`.
 ```
-mvn -pl server -am exec:java -Dexec.mainClass="com.hermses.server.ServerMain"
-```
-Ou exécuter le jar :
-```
-java -cp server/target/server-0.1.0-SNAPSHOT.jar:protocol/target/protocol-0.1.0-SNAPSHOT.jar com.hermses.server.ServerMain
+mvn -pl server -am package
+java -jar server/target/hermses-server.jar 5050
 ```
 
 ## Client CLI
+Après build, JAR autonome : `client/target/hermses-client.jar`.
 ```
-mvn -q -pl client -am exec:java -Dexec.mainClass="com.hermses.client.ClientMain"
+mvn -pl client -am package
+java -jar client/target/hermses-client.jar localhost 5050 pseudo
 ```
 
 ## Client UI (JavaFX)
 ```
 mvn -pl client-ui -am javafx:run
 ```
+
+## Scripts binaires pratiques
+
+Un dossier `bin/` contient des scripts pour lancer rapidement (Linux/macOS) :
+
+```
+bin/server [port]
+bin/client [host] [port] [pseudo]
+```
+
+Si nécessaire : `chmod +x bin/server bin/client`.
+
 
 ## Roadmap (suggestion)
 1. Authentification & gestion utilisateurs.

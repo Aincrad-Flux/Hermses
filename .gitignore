@@ -18,6 +18,7 @@ dependency-reduced-pom.xml
 .settings/
 .factorypath
 .vscode/
+bin/
 
 ## OS / Misc
 .DS_Store
