@@ -189,9 +189,26 @@ public class TuiClient {
     }
 
     public static void main(String[] args) throws Exception {
-    String host = args.length > 0 ? args[0] : "localhost";
-    int port = args.length > 1 ? Integer.parseInt(args[1]) : 5050;
-    String user = args.length > 2 ? args[2] : null; // déclenche écran login
-    new TuiClient(host, port, user).run();
+        if (args.length > 0 && ("--help".equalsIgnoreCase(args[0]) || "-h".equalsIgnoreCase(args[0]))) {
+            System.out.println("Usage: bin/client --tui [host] [port] [username]\n" +
+                    "Si username omis: un écran de login est affiché.");
+            return;
+        }
+        String host = "localhost";
+        int port = 5050;
+        String user = null; // déclenche écran login si null
+        if (args.length > 0) host = args[0];
+        if (args.length > 1) {
+            try {
+                port = Integer.parseInt(args[1]);
+            } catch (NumberFormatException nfe) {
+                // L'utilisateur a probablement fourni directement un username en 2ᵉ position
+                user = args[1];
+            }
+        }
+        if (args.length > 2) {
+            user = args[2];
+        }
+        new TuiClient(host, port, user).run();
     }
 }
